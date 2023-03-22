@@ -10,24 +10,25 @@ import CustomHeaderButton from '../../components/UI/HeaderButton'
 import ProductItem from '../../components/shop/ProductItem'
 import * as productActions from '../../store/acitons/products'
 import Colors from '../../Constants/Colors'
+import { useCallback } from 'react'
 
 
 const ProductOverview = ({ navigation }) => {
     const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState()
 
     const dispatch = useDispatch()
     const cart = useSelector(state => state.cart)
 
-
-    useEffect(() => {
-        const loadProducts = async () => {
-            setIsLoading(true)
+    const loadProducts = useCallback(async () => {
+        setIsLoading(true)
+        try {
             await dispatch(productActions.fetechProducts())
-            setIsLoading(false)
+        } catch (error) {
+            setError(error.message)
         }
-        loadProducts()
-    }, [dispatch])
-
+        setIsLoading(false)
+    })
 
     const productItem = (itemData) => {
         return <ProductItem image={itemData.item.imageUrl} title={itemData.item.title}
@@ -43,6 +44,15 @@ const ProductOverview = ({ navigation }) => {
 
 
     const [headerTitle, setHeaderTitle] = useState('All Products');
+
+    useEffect(() => {
+        // const willFocusSub = navigation.addListener("willFocus", loadProducts)
+        const unsubscribe = navigation.addListener('focus', loadProducts);
+
+        // Return the function to unsubscribe from the event so it gets removed on unmount
+        return unsubscribe;
+        // loadProducts()
+    }, [dispatch])
     useEffect(() => {
         navigation.setOptions({
             title: headerTitle,
@@ -67,6 +77,14 @@ const ProductOverview = ({ navigation }) => {
 
     const products = useSelector((state) => state.products.availableProducts)
 
+    if (error) {
+        return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <Text>An Error Occurred</Text>
+            <Button title='Reload' onPress={loadProducts} />
+        </View>
+    }
+
+
     if (isLoading) {
         return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator size={"large"} color={Colors.accent} />
@@ -80,7 +98,10 @@ const ProductOverview = ({ navigation }) => {
         </View>
     }
     return (
-        <FlatList data={products} keyExtractor={item => item.id} renderItem={productItem} />
+        <FlatList
+            refreshing
+            onRefresh={loadProducts}
+            data={products} keyExtractor={item => item.id} renderItem={productItem} />
     )
 }
 

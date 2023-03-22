@@ -1,5 +1,9 @@
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Button, Keyboard, Alert } from 'react-native'
-import React, { useReducer } from 'react'
+import {
+    StyleSheet, View, ScrollView, KeyboardAvoidingView,
+    Button, Keyboard, Alert,
+    ActivityIndicator
+} from 'react-native'
+import React, { useReducer, useState } from 'react'
 import { useRoute } from '@react-navigation/native'
 import { useEffect } from 'react'
 
@@ -10,6 +14,7 @@ import * as productActions from '../../store/acitons/products'
 import { useSelector } from 'react-redux'
 import Input from '../../components/UI/Input'
 import { useCallback } from 'react'
+import Colors from '../../Constants/Colors'
 
 const UPDATE_ACTION = "UPDATE_ACTION"
 
@@ -49,6 +54,9 @@ const EditProductScreen = ({ navigation }) => {
     const userProducts = useSelector(state => state.products.userProducts)
     const editedProduct = userProducts.find(product => product.id === productId)
 
+    const [isLoading, setLoading] = useState(false)
+    const [error, setError] = useState("")
+
 
     const [formState, formDispatch] = useReducer(formReducer, {
         inputValues: {
@@ -69,8 +77,6 @@ const EditProductScreen = ({ navigation }) => {
 
 
     const inputChangeHandler = useCallback((inputIdentifier, inputValue, inputIsValid) => {
-        console.log(inputIdentifier)
-
         formDispatch({
             type: UPDATE_ACTION,
             value: inputValue,
@@ -79,28 +85,35 @@ const EditProductScreen = ({ navigation }) => {
         })
     }, [formDispatch])
 
-    const submitHanlder = () => {
+    const submitHanlder = useCallback(async () => {
         Keyboard.dismiss()
         if (!formState.formIsValid) {
             Alert.alert("Invalid title", "Please enter a valid title", [{ text: "Okay" }])
             return
         }
-        if (editedProduct) {
-            dispatch(productActions.updateProduct(productId,
-                formState.inputValues.title,
-                formState.inputValues.description,
-                formState.inputValues.imageUrl
-            ))
-        } else {
-            dispatch(productActions.createProduct(
-                formState.inputValues.title,
-                formState.inputValues.description,
-                formState.inputValues.imageUrl,
-                +formState.inputValues.price
-            ))
+        setError(null)
+        setLoading(true)
+        try {
+            if (editedProduct) {
+                await dispatch(productActions.updateProduct(productId,
+                    formState.inputValues.title,
+                    formState.inputValues.description,
+                    formState.inputValues.imageUrl
+                ))
+            } else {
+                await dispatch(productActions.createProduct(
+                    formState.inputValues.title,
+                    formState.inputValues.description,
+                    formState.inputValues.imageUrl,
+                    +formState.inputValues.price
+                ))
+            }
+            navigation.goBack()
+        } catch (error) {
+            setError(error.message);
         }
-        navigation.goBack()
-    }
+        setLoading(false)
+    })
 
     useEffect(() => {
         navigation.setOptions({
@@ -115,6 +128,17 @@ const EditProductScreen = ({ navigation }) => {
             // },
         })
     }, [])
+
+    useEffect(() => {
+        if (error) {
+            Alert.alert("An Error Occurred", error, [{ text: "Okay" }])
+        }
+    })
+
+    if (isLoading) {
+        return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}> <ActivityIndicator color={Colors.accent} size="large" /> </View>
+    }
+
     return (
         <KeyboardAvoidingView behavior='padding' keyboardVerticalOffset={100}>
             <ScrollView>

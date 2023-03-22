@@ -7,31 +7,48 @@ import Product from "../../models/products";
 
 export const fetechProducts = () => {
     return async (dispatch) => {
-        const response = await fetch("https://fir-learning-9c94c-default-rtdb.firebaseio.com/products.json")
+        try {
+            const response = await fetch("https://fir-learning-9c94c-default-rtdb.firebaseio.com/products.json")
 
-        const resData = await response.json()
-        const loadedProducts = []
+            if (!response.ok) {
+                throw new Error("Something went wrong")
+            }
+            const resData = await response.json()
+            const loadedProducts = []
 
-        for (const key in resData) {
-            loadedProducts.push(new Product(
-                key,
-                'u1',
-                resData[key].title,
-                resData[key].imageUrl,
-                resData[key].description,
-                resData[key].price
-            ))
+            for (const key in resData) {
+                loadedProducts.push(new Product(
+                    key,
+                    'u1',
+                    resData[key].title,
+                    resData[key].imageUrl,
+                    resData[key].description,
+                    resData[key].price
+                ))
+            }
+
+            dispatch({ type: SET_PRODUCTS, products: loadedProducts })
+        } catch (error) {
+            throw error
         }
-
-        dispatch({ type: SET_PRODUCTS, products: loadedProducts })
     }
 }
 
 
 export const deleteProduct = (id) => {
-    return {
-        type: DELETE_PRODUCT,
-        productId: id,
+    return async dispatch => {
+        const response = await fetch(`https://fir-learning-9c94c-default-rtdb.firebaseio.com/products/${id}.json`, {
+            method: 'DELETE',
+        })
+
+        dispatch({
+            type: DELETE_PRODUCT,
+            productId: id,
+        })
+
+        if (!response.ok) {
+            throw new Error("Something went wrong")
+        }
     }
 }
 
@@ -51,7 +68,6 @@ export const createProduct = (title, description, imageUrl, price) => {
         })
 
         const resData = await response.json()
-
         dispatch({
             type: CREATE_PRODUCT,
             productData: {
@@ -68,13 +84,32 @@ export const createProduct = (title, description, imageUrl, price) => {
 }
 
 export const updateProduct = (id, title, description, imageUrl) => {
-    return {
-        type: UPDATE_PRODUCT,
-        pid: id,
-        productData: {
-            title: title,
-            description: description,
-            imageUrl: imageUrl,
+    return async dispatch => {
+        const response = await fetch(`https://fir-learning-9c94c-default-rtdb.firebaseio.com/products/${id}.json`, {
+            method: 'PATCH',
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                title: title,
+                description: description,
+                imageUrl: imageUrl,
+            })
+        })
+
+        if (!response.ok) {
+            throw new Error("Something went wrong")
         }
+
+
+        dispatch({
+            type: UPDATE_PRODUCT,
+            pid: id,
+            productData: {
+                title: title,
+                description: description,
+                imageUrl: imageUrl,
+            }
+        })
     }
 }
